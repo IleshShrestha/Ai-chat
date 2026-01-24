@@ -91,23 +91,48 @@ html, body {
 	transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Custom scrollbar for dark theme */
+/* Custom scrollbar - uses theme variables */
 ::-webkit-scrollbar {
 	width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-	background: #374151;
+	background: var(--color-border);
 	border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: linear-gradient(180deg, #8b5cf6, #7c3aed);
+	background: var(--color-accent);
 	border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-	background: linear-gradient(180deg, #7c3aed, #6d28d9);
+	background: var(--color-accent-hover);
+}
+
+/* Theme-specific scrollbar overrides for better browser compatibility */
+.light ::-webkit-scrollbar-thumb {
+	background: var(--color-accent);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+	background: var(--color-accent-hover);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+	background: var(--color-accent);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+	background: var(--color-accent-hover);
+}
+
+.green ::-webkit-scrollbar-thumb {
+	background: var(--color-accent);
+}
+
+.green ::-webkit-scrollbar-thumb:hover {
+	background: var(--color-accent-hover);
 }
 
 /* Smooth transitions */
