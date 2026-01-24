@@ -1,23 +1,34 @@
 'use client';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Settings } from 'lucide-react';
+import SettingsModal from '../settings/SettingsModal';
 
 export default function SidebarFooter() {
-  return (
-    <motion.div 
+	const [isModalOpen, setIsModalOpen] = useState(false);
 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.4 }}
-    >
-      <motion.button 
-        className="w-full flex items-center justify-center px-3 py-2 hover:bg-[#343d4d] rounded-lg transition-colors text-white"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Settings className="w-4 h-4 mr-2" />
-        Settings
-      </motion.button>
-    </motion.div>
-  );
+	return (
+		<>
+			<motion.div
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ delay: 0.4 }}
+			>
+				<motion.button
+					onClick={() => setIsModalOpen(true)}
+					className="w-full flex items-center justify-center px-3 py-2 hover:bg-(--color-tertiary) rounded-lg transition-colors text-(--color-text-primary)"
+					whileHover={{ scale: 1.02 }}
+					whileTap={{ scale: 0.98 }}
+				>
+					<Settings className="w-4 h-4 mr-2" />
+					Settings
+				</motion.button>
+			</motion.div>
+
+			<SettingsModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+			/>
+		</>
+	);
 }
