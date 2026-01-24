@@ -2,42 +2,20 @@
 
 A modern, full-featured AI chat application built with Next.js and OpenAI. Experience seamless conversations with multiple AI models, beautiful UI, and powerful features.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.1.4-black)
-![React](https://img.shields.io/badge/React-19.2.3-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
-![OpenAI](https://img.shields.io/badge/OpenAI-6.16.0-green)
-
 ## Features
 
 ### AI Chat
 - **Multiple Model Support**: Choose from GPT-4o, GPT-4o-mini, GPT-4, or GPT-3.5-turbo
 - **Streaming Responses**: Real-time streaming for instant feedback
-- **Markdown Rendering**: Beautiful markdown support with syntax highlighting
-- **Code Blocks**: Syntax-highlighted code blocks with proper formatting
+- **Markdown Rendering**: Markdown support with syntax highlighting
+
 
 ### Chat Management
 - **Chat History**: Persistent chat history stored locally
-- **Create New Chats**: Start fresh conversations anytime
 - **Rename Chats**: Customize chat titles
 - **Delete Chats**: Remove unwanted conversations
 - **Auto-titles**: Automatic title generation from first message
 
-### Themes
-- **Three Themes**: Light, Dark, and Green color schemes
-- **Persistent Preferences**: Theme choice saved across sessions
-- **Smooth Transitions**: Beautiful theme switching animations
-
-### User Experience
-- **Responsive Design**: Works seamlessly on desktop and mobile
-- **Smooth Animations**: Powered by Motion (Framer Motion)
-- **Auto-scroll**: Automatic scrolling to latest messages
-- **Loading States**: Visual feedback during AI processing
-
-### Technical Features
-- **TypeScript**: Full type safety
-- **Server-Sent Events**: Efficient streaming implementation
-- **Local Storage**: Client-side chat persistence
-- **Custom Hooks**: Reusable React hooks for chat functionality
 
 ## Getting Started
 

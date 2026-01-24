@@ -1,10 +1,9 @@
 'use client';
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 export default function useAutoScroll(messages: any[], isLoading: boolean) {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
-	const [showScrollButton, setShowScrollButton] = useState(false);
 
 	// Auto-scroll functions - useCallback to prevent recreation
 	const scrollToBottom = useCallback(() => {
@@ -26,27 +25,9 @@ export default function useAutoScroll(messages: any[], isLoading: boolean) {
 		}
 	}, [messages.length, isLoading, isAtBottom, scrollToBottom]);
 
-	// Handle scroll to show/hide scroll-to-bottom button
-	useEffect(() => {
-		const handleScroll = () => {
-			if (messagesContainerRef.current) {
-				const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-				const atBottom = scrollTop + clientHeight >= scrollHeight - 100;
-				setShowScrollButton(!atBottom);
-			}
-		};
-
-		const container = messagesContainerRef.current;
-		if (container) {
-			container.addEventListener('scroll', handleScroll);
-			return () => container.removeEventListener('scroll', handleScroll);
-		}
-	}, []); // Empty dependency array - only run once
-
 	return {
 		messagesEndRef,
 		messagesContainerRef,
-		showScrollButton,
 		scrollToBottom,
 	};
 }
