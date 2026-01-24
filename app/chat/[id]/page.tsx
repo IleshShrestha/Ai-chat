@@ -16,7 +16,7 @@ export default function ChatPage() {
   
   // Custom hooks for chat functionality  
   const { messagesEndRef, messagesContainerRef, scrollToBottom } = useAutoScroll([], false);
-  const { messages, chatTitle, isLoading, sendMessage } = useChat(chatId, scrollToBottom);
+  const { messages, chatTitle, isLoading, streamingMessageId, sendMessage } = useChat(chatId, scrollToBottom);
   
   const handleSendMessage = (content: string) => {
     sendMessage(content, selectedModel);
@@ -40,7 +40,7 @@ export default function ChatPage() {
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto relative"
       >
-        <div className="max-w-none mx-auto px-4 py-6 space-y-6
+        <div className="max-w-none mx-auto px-4 pt-16 pb-6 space-y-6
                         min-w-[320px]
                         sm:min-w-[480px] sm:max-w-2xl sm:px-6
                         md:min-w-[600px] md:max-w-3xl
@@ -48,7 +48,11 @@ export default function ChatPage() {
 
 ">
           {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble 
+              key={message.id} 
+              message={message} 
+              isStreaming={message.id === streamingMessageId}
+            />
           ))}
           
           {/* Loading Message */}
