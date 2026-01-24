@@ -1,5 +1,10 @@
 'use client';
 
+import { Bot, User } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+
 interface Message {
   id: string;
   content: string;
@@ -9,9 +14,10 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
+  isStreaming?: boolean;
 }
 
-// Helper function to format message content with line breaks
+// Helper function to format message content with line breaks (for user messages)
 const formatMessageContent = (content: string) => {
   return content.split('\n').map((line, index, array) => (
     <span key={index}>
@@ -21,7 +27,7 @@ const formatMessageContent = (content: string) => {
   ));
 };
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+export default function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
   return (
     <div
       className={`flex items-start space-x-3 ${
@@ -29,24 +35,116 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
       }`}
     >
       {message.sender === 'ai' && (
-        <div className="shrink-0 w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-          <span className="text-white font-bold text-sm">AI</span>
+        <div className="shrink-0 w-8 h-8 bg-linear-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+          <Bot className="w-4 h-4 text-white font-bold " />
         </div>
       )}
       <div
         className={`px-4 py-3 rounded-lg ${
           message.sender === 'ai'
             ? 'bg-gray-800 text-gray-100'
-            : 'bg-teal-500 text-white'
+            : 'bg-gray-600 text-white'
         } max-w-[280px] sm:max-w-md md:max-w-lg lg:max-w-xl`}
       >
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          {formatMessageContent(message.content)}
-        </p>
+        {message.sender === 'ai' ? (
+          <div className="text-sm leading-relaxed max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                // Customize code blocks
+                code({ node, inline, className, children, ...props }: any) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline && match ? (
+                    <pre className="bg-gray-900 rounded p-3 overflow-x-auto my-2">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="bg-gray-700 px-1.5 py-0.5 rounded text-sm" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                // Customize paragraphs
+                p({ children }: any) {
+                  return <p className="my-2">{children}</p>;
+                },
+                // Customize lists
+                ul({ children }: any) {
+                  return <ul className="list-disc list-inside my-2 space-y-1">{children}</ul>;
+                },
+                ol({ children }: any) {
+                  return <ol className="list-decimal list-inside my-2 space-y-1">{children}</ol>;
+                },
+                // Customize headings
+                h1({ children }: any) {
+                  return <h1 className="text-xl font-bold my-3">{children}</h1>;
+                },
+                h2({ children }: any) {
+                  return <h2 className="text-lg font-bold my-2">{children}</h2>;
+                },
+                h3({ children }: any) {
+                  return <h3 className="text-base font-bold my-2">{children}</h3>;
+                },
+                // Customize links
+                a({ children, href }: any) {
+                  return (
+                    <a href={href} className="text-teal-400 hover:text-teal-300 underline" target="_blank" rel="noopener noreferrer">
+                      {children}
+                    </a>
+                  );
+                },
+                // Customize blockquotes
+                blockquote({ children }: any) {
+                  return (
+                    <blockquote className="border-l-4 border-gray-600 pl-4 my-2 italic">
+                      {children}
+                    </blockquote>
+                  );
+                },
+                // Customize tables
+                table({ children }: any) {
+                  return (
+                    <div className="overflow-x-auto my-2">
+                      <table className="min-w-full border-collapse border border-gray-600">
+                        {children}
+                      </table>
+                    </div>
+                  );
+                },
+                th({ children }: any) {
+                  return (
+                    <th className="border border-gray-600 px-3 py-2 bg-gray-700 font-semibold">
+                      {children}
+                    </th>
+                  );
+                },
+                td({ children }: any) {
+                  return (
+                    <td className="border border-gray-600 px-3 py-2">
+                      {children}
+                    </td>
+                  );
+                },
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span className="inline-block w-2 h-5 bg-gray-100 ml-1 typing-cursor">|</span>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+            {formatMessageContent(message.content)}
+          </p>
+        )}
       </div>
       {message.sender === 'user' && (
-        <div className="shrink-0 w-8 h-8 bg-sky-600 rounded-full flex items-center justify-center">
-          <span className="text-white font-bold text-sm">U</span>
+        <div className="shrink-0 w-8 h-8 bg-linear-to-r from-sky-500 to-teal-500 rounded-full flex items-center justify-center">
+          <User className="w-4 h-4 text-white " />
         </div>
       )}
     </div>
