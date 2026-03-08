@@ -1,4 +1,4 @@
-# Cognizant - AI Chat Application
+#  AI Chat Application
 
 A modern, full-featured AI chat application built with Next.js and OpenAI. Experience seamless conversations with multiple AI models, beautiful UI, and powerful features.
 
