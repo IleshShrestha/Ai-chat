@@ -16,8 +16,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 		
 		checkMobile();
 		window.addEventListener('resize', checkMobile);
-		
+
 		return () => window.removeEventListener('resize', checkMobile);
+	}, []);
+
+	// If we returned from /auth/callback with an error (e.g. a failed account
+	// link), open the sidebar so the message under Link Account is visible.
+	// SidebarFooter reads and clears the param once it mounts.
+	useEffect(() => {
+		if (new URLSearchParams(window.location.search).has('authError')) {
+			setIsSidebarOpen(true);
+		}
 	}, []);
 
 	const toggleSidebar = () => {
