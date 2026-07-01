@@ -3,7 +3,9 @@
 import { Bot, User } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeKatex from 'rehype-katex';
 
 interface Message {
   id: string;
@@ -16,6 +18,14 @@ interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
 }
+
+// LLMs emit display math as \[ ... \] and inline math as \( ... \), but
+// Markdown treats \[ and \( as escaped characters. Convert them to the
+// $$ ... $$ / $ ... $ delimiters that remark-math understands.
+const normalizeMath = (content: string): string =>
+  content
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, expr) => `$$${expr}$$`)
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_, expr) => `$${expr}$`);
 
 // Helper function to format message content with line breaks (for user messages)
 const formatMessageContent = (content: string) => {
@@ -47,19 +57,32 @@ export default function MessageBubble({ message, isStreaming = false }: MessageB
         {message.sender === 'ai' ? (
           <div className="text-sm leading-relaxed max-w-none">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex, rehypeHighlight]}
               components={{
-                // Customize code blocks
-                code({ inline, className, children, ...props }: any) {
-                  const match = /language-(\w+)/.exec(className || '');
-                  return !inline && match ? (
+                // Block code wrapper. react-markdown v10 renders <pre><code>;
+                // rehype-highlight adds the hljs/language classes to <code>,
+                // so we only style the <pre> here and leave <code> untouched.
+                pre({ children }: any) {
+                  return (
                     <pre className="bg-(--color-background) rounded p-3 overflow-x-auto my-2">
+                      {children}
+                    </pre>
+                  );
+                },
+                // Only inline code needs custom styling. Block code carries a
+                // `language-*` class (and lives inside <pre>) — pass it through
+                // untouched so highlighting classes survive.
+                code({ className, children, ...props }: any) {
+                  const isBlock = /language-|hljs/.test(className || '');
+                  if (isBlock) {
+                    return (
                       <code className={className} {...props}>
                         {children}
                       </code>
-                    </pre>
-                  ) : (
+                    );
+                  }
+                  return (
                     <code className="bg-(--color-secondary) px-1.5 py-0.5 rounded text-sm" {...props}>
                       {children}
                     </code>
@@ -128,7 +151,7 @@ export default function MessageBubble({ message, isStreaming = false }: MessageB
                 },
               }}
             >
-              {message.content}
+              {normalizeMath(message.content)}
             </ReactMarkdown>
             {isStreaming && (
               <span className="inline-block w-2 h-5 bg-gray-100 ml-1 typing-cursor">|</span>

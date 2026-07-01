@@ -34,8 +34,8 @@ export default function ChatHistoryList({ chats, onChatDeleted, onChatRenamed }:
 		}
 	};
 
-	const handleSaveRename = (chatId: string, newTitle: string) => {
-		updateChatTitle(chatId, newTitle);
+	const handleSaveRename = async (chatId: string, newTitle: string) => {
+		await updateChatTitle(chatId, newTitle);
 		onChatRenamed?.();
 	};
 
@@ -47,9 +47,9 @@ export default function ChatHistoryList({ chats, onChatDeleted, onChatRenamed }:
 		}
 	};
 
-	const confirmDelete = () => {
+	const confirmDelete = async () => {
 		if (chatToDelete) {
-			const success = deleteChatById(chatToDelete.id);
+			const success = await deleteChatById(chatToDelete.id);
 			if (success) {
 				// If we're currently viewing the deleted chat, redirect to chat page
 				if (pathname.includes(chatToDelete.id)) {

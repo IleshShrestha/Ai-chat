@@ -1,47 +1,36 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAllChats, createNewChat, type Chat } from '../utils/chatStorage';
+import { getAllChats, type Chat } from '../utils/chatStorage';
 
 export default function useChatList(isOpen: boolean) {
 	const [chats, setChats] = useState<Chat[]>([]);
 	const router = useRouter();
 
-	// Load chats from localStorage on mount and when sidebar opens
-	useEffect(() => {
-		const loadChats = () => {
-			try {
-				const storedChats = getAllChats();
-				setChats(storedChats);
-			} catch (error) {
-				console.error('Error loading chats:', error);
-				setChats([]);
-			}
-		};
-
-		loadChats();
-		
-		// Reload chats when sidebar opens to get latest data
-		if (isOpen) {
-			loadChats();
-		}
-	}, [isOpen]);
-
-	const refreshChats = () => {
+	const refreshChats = useCallback(async () => {
 		try {
-			const updatedChats = getAllChats();
-			setChats(updatedChats);
+			const storedChats = await getAllChats();
+			setChats(storedChats);
 		} catch (error) {
-			console.error('Error refreshing chats:', error);
+			console.error('Error loading chats:', error);
+			setChats([]);
 		}
-	};
+	}, []);
 
-	const handleCreateNewChat = () => {
-		const newChatId = createNewChat('New Chat');
-		router.push(`/chat/${newChatId}`);
-		
-		// Refresh the chat list
+	// Load on mount / when the sidebar opens.
+	useEffect(() => {
 		refreshChats();
+	}, [isOpen, refreshChats]);
+
+	// Refresh when a chat is created/renamed/deleted elsewhere in the app.
+	useEffect(() => {
+		window.addEventListener('chats:changed', refreshChats);
+		return () => window.removeEventListener('chats:changed', refreshChats);
+	}, [refreshChats]);
+
+	// "New Chat" just opens a draft — no row is created until the first message.
+	const handleCreateNewChat = () => {
+		router.push('/chat');
 	};
 
 	return {

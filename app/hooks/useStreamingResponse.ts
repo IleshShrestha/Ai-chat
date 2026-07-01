@@ -8,6 +8,7 @@ interface StreamingCallbacks {
 }
 
 export default async function streamResponse(
+	chatId: string,
 	message: string,
 	selectedModel: string,
 	callbacks: StreamingCallbacks
@@ -15,9 +16,10 @@ export default async function streamResponse(
 	try {
 		const response = await fetch('/api/chat', {
 			method: 'POST',
-			body: JSON.stringify({ 
+			body: JSON.stringify({
+				chatId,
 				message,
-				model: selectedModel 
+				model: selectedModel,
 			}),
 			headers: {
 				'Content-Type': 'application/json',

@@ -1,61 +1,73 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import useChatData, { Message } from './useChatData';
 import streamResponse from './useStreamingResponse';
+import { createNewChat } from '../utils/chatStorage';
 
-export default function useChat(chatId: string, scrollToBottom: () => void) {
-	const {
-		messages,
-		chatTitle,
-		isFirstUserMessage,
-		addMessage,
-		updateMessage,
-		removeMessage,
-		saveMessageToStorage,
-		generateTitleFromFirstMessage,
-	} = useChatData(chatId, scrollToBottom);
-	
+// Broadcast so the sidebar (a sibling component) can refresh its chat list.
+function notifyChatsChanged() {
+	window.dispatchEvent(new Event('chats:changed'));
+}
+
+export default function useChat(
+	initialChatId: string | undefined,
+	scrollToBottom: () => void
+) {
+	const router = useRouter();
+	const { messages, chatTitle, addMessage, updateMessage, removeMessage } =
+		useChatData(initialChatId, scrollToBottom);
+
+	// The persisted chat id. Null while this is still a draft. Kept in a ref so
+	// creating it mid-send doesn't retrigger useChatData's load effect.
+	const chatIdRef = useRef<string | null>(initialChatId ?? null);
+
 	const [isLoading, setIsLoading] = useState(false);
-	const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-
+	const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+		null
+	);
 
 	const sendMessage = async (content: string, selectedModel: string) => {
 		if (!content.trim() || isLoading) return;
 
-		// Add user message immediately
+		// Lazily create the chat on the first message. createNewChat seeds the
+		// greeting; the API route names the chat from this first message.
+		let chatId = chatIdRef.current;
+		if (!chatId) {
+			const newId = await createNewChat('New Chat');
+			if (!newId) {
+				router.push('/login');
+				return;
+			}
+			chatId = newId;
+			chatIdRef.current = newId;
+			// Swap the URL to the real chat without a Next navigation, so the
+			// component stays mounted and streaming continues uninterrupted.
+			window.history.replaceState(null, '', `/chat/${newId}`);
+			notifyChatsChanged();
+		}
+
 		const userMessage: Message = {
 			id: Date.now().toString(),
 			content,
 			sender: 'user',
 			timestamp: new Date(),
 		};
-		
 		addMessage(userMessage);
-		
-		// Auto-scroll to bottom when user sends message
 		setTimeout(scrollToBottom, 100);
-		
-		// Save user message to localStorage
-		saveMessageToStorage(userMessage);
-		
-		// Generate and update chat title if this is the first user message
-		generateTitleFromFirstMessage(content);
 
-		// Set loading state
 		setIsLoading(true);
 
-		// Create AI message but don't add it to state yet - wait for first chunk
 		const aiMessage: Message = {
 			id: (Date.now() + 1).toString(),
 			content: '',
 			sender: 'ai',
 			timestamp: new Date(),
 		};
-		
 		let hasStartedStreaming = false;
 
 		try {
-			await streamResponse(content, selectedModel, {
+			await streamResponse(chatId, content, selectedModel, {
 				onFirstChunk: () => {
 					hasStartedStreaming = true;
 					setIsLoading(false);
@@ -64,50 +76,30 @@ export default function useChat(chatId: string, scrollToBottom: () => void) {
 				},
 				onChunk: (fullContent: string) => {
 					updateMessage(aiMessage.id, fullContent);
-					// Auto-scroll to bottom as content streams
 					setTimeout(scrollToBottom, 0);
 				},
 				onComplete: (fullContent: string) => {
-					// Update final content if needed
-					if (fullContent) {
-						updateMessage(aiMessage.id, fullContent);
-					}
-					// Save final message to localStorage
-					saveMessageToStorage({
-						...aiMessage,
-						content: fullContent || aiMessage.content,
-					});
+					if (fullContent) updateMessage(aiMessage.id, fullContent);
 					setStreamingMessageId(null);
+					// Title/order may have changed server-side; refresh the sidebar.
+					notifyChatsChanged();
 				},
 				onError: (error: Error) => {
 					console.error('Error sending message:', error);
-					
-					// Remove partial AI message if streaming had started
-					if (hasStartedStreaming) {
-						removeMessage(aiMessage.id);
-					}
-					
-					// Add error message
-					const errorMessage: Message = {
+					if (hasStartedStreaming) removeMessage(aiMessage.id);
+					addMessage({
 						id: (Date.now() + 1).toString(),
-						content: 'Sorry, there was an error processing your message. Please try again.',
+						content:
+							'Sorry, there was an error processing your message. Please try again.',
 						sender: 'ai',
 						timestamp: new Date(),
-					};
-					
-					addMessage(errorMessage);
-					
-					// Save error message to localStorage
-					saveMessageToStorage(errorMessage);
-					
+					});
 					setStreamingMessageId(null);
 				},
 			});
 		} catch (error) {
 			console.error('Unexpected error in sendMessage:', error);
-			setIsLoading(false);
 		} finally {
-			// Clear loading state
 			setIsLoading(false);
 		}
 	};

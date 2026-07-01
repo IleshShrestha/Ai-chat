@@ -1,14 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-	getChatById, 
-	saveChatMessage, 
-	updateLastAccessed, 
-	createNewChat,
-	updateChatTitle,
-	generateChatTitle,
-} from '../utils/chatStorage';
+import { getChatById, updateLastAccessed, GREETING } from '../utils/chatStorage';
 
 export interface Message {
 	id: string;
@@ -20,138 +13,103 @@ export interface Message {
 interface UseChatDataReturn {
 	messages: Message[];
 	chatTitle: string;
-	isFirstUserMessage: boolean;
+	isLoaded: boolean;
 	setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-	setChatTitle: React.Dispatch<React.SetStateAction<string>>;
-	setIsFirstUserMessage: React.Dispatch<React.SetStateAction<boolean>>;
 	addMessage: (message: Message) => void;
 	updateMessage: (messageId: string, content: string) => void;
 	removeMessage: (messageId: string) => void;
-	saveMessageToStorage: (message: Message) => void;
-	generateTitleFromFirstMessage: (content: string) => void;
 }
 
-export default function useChatData(chatId: string, scrollToBottom: () => void): UseChatDataReturn {
+// The local-only greeting shown in a draft chat before anything is persisted.
+function greetingMessage(): Message {
+	return {
+		id: 'greeting',
+		content: GREETING,
+		sender: 'ai',
+		timestamp: new Date(),
+	};
+}
+
+export default function useChatData(
+	chatId: string | undefined,
+	scrollToBottom: () => void
+): UseChatDataReturn {
 	const router = useRouter();
-	const [messages, setMessages] = useState<Message[]>([]);
+	// Draft starts with the local greeting; an existing chat starts empty and
+	// fills in once the DB load resolves (avoids a greeting flash).
+	const [messages, setMessages] = useState<Message[]>(() =>
+		chatId ? [] : [greetingMessage()]
+	);
 	const [chatTitle, setChatTitle] = useState('New Chat');
-	const [isFirstUserMessage, setIsFirstUserMessage] = useState(true);
+	const [isLoaded, setIsLoaded] = useState(false);
 
-	// Load chat data on mount
 	useEffect(() => {
-		const loadChatData = () => {
-			// Validate chatId
-			if (!chatId || typeof chatId !== 'string') {
-				console.error('Invalid chat ID:', chatId);
-				const newChatId = createNewChat('New Chat');
-				router.replace(`/chat/${newChatId}`);
-				return;
-			}
+		let cancelled = false;
 
+		// Draft chat: no id yet. Show the greeting locally; persist nothing.
+		if (!chatId) {
+			setMessages([greetingMessage()]);
+			setChatTitle('New Chat');
+			setIsLoaded(true);
+			return;
+		}
+
+		const loadChatData = async () => {
 			try {
-				let chat = getChatById(chatId);
-				
-				// If chat doesn't exist, create a new one or redirect
+				const chat = await getChatById(chatId);
+				if (cancelled) return;
+
+				// Unknown id (bad URL / deleted chat) → fall back to a draft.
 				if (!chat) {
-					console.log(`Chat with ID ${chatId} not found, creating new chat`);
-					const newChatId = createNewChat('New Chat');
-					router.replace(`/chat/${newChatId}`);
+					router.replace('/chat');
 					return;
 				}
-				
-				// Validate chat data structure
-				if (!chat.messages || !Array.isArray(chat.messages)) {
-					console.error('Invalid chat data structure:', chat);
-					const newChatId = createNewChat('New Chat');
-					router.replace(`/chat/${newChatId}`);
-					return;
-				}
-				
-				// Convert storage messages to component messages (with Date objects)
-				const componentMessages: Message[] = chat.messages.map(msg => {
-					try {
-						return {
-							...msg,
-							timestamp: new Date(msg.timestamp)
-						};
-					} catch (error) {
-						console.error('Error parsing message timestamp:', error);
-						return {
-							...msg,
-							timestamp: new Date() // Fallback to current time
-						};
-					}
-				});
-				
-				setMessages(componentMessages);
+
+				setMessages(
+					chat.messages.map((msg) => ({
+						...msg,
+						timestamp: new Date(msg.timestamp),
+					}))
+				);
 				setChatTitle(chat.title || 'New Chat');
-				
-				// Check if this chat has user messages to determine if it's the first
-				const hasUserMessages = chat.messages.some(msg => msg.sender === 'user');
-				setIsFirstUserMessage(!hasUserMessages);
-				
-				// Update last accessed time
+				setIsLoaded(true);
+
 				updateLastAccessed(chatId);
-				
-				// Scroll to bottom when chat loads
 				setTimeout(scrollToBottom, 100);
 			} catch (error) {
 				console.error('Error loading chat data:', error);
-				const newChatId = createNewChat('New Chat');
-				router.replace(`/chat/${newChatId}`);
+				if (!cancelled) router.replace('/chat');
 			}
 		};
 
-		if (chatId) {
-			loadChatData();
-		}
+		loadChatData();
+
+		return () => {
+			cancelled = true;
+		};
 	}, [chatId, router, scrollToBottom]);
 
 	const addMessage = (message: Message) => {
-		setMessages(prev => [...prev, message]);
+		setMessages((prev) => [...prev, message]);
 	};
 
 	const updateMessage = (messageId: string, content: string) => {
-		setMessages(prev => prev.map(msg => 
-			msg.id === messageId 
-				? { ...msg, content }
-				: msg
-		));
-	};
-
-	const saveMessageToStorage = (message: Message) => {
-		saveChatMessage(chatId, {
-			id: message.id,
-			content: message.content,
-			sender: message.sender,
-			timestamp: message.timestamp
-		});
+		setMessages((prev) =>
+			prev.map((msg) => (msg.id === messageId ? { ...msg, content } : msg))
+		);
 	};
 
 	const removeMessage = (messageId: string) => {
-		setMessages(prev => prev.filter(msg => msg.id !== messageId));
-	};
-
-	const generateTitleFromFirstMessage = (content: string) => {
-		if (isFirstUserMessage) {
-			const newTitle = generateChatTitle(content);
-			updateChatTitle(chatId, newTitle);
-			setChatTitle(newTitle);
-			setIsFirstUserMessage(false);
-		}
+		setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
 	};
 
 	return {
 		messages,
 		chatTitle,
-		isFirstUserMessage,
+		isLoaded,
 		setMessages,
-		setChatTitle,
-		setIsFirstUserMessage,
 		addMessage,
 		updateMessage,
 		removeMessage,
-		saveMessageToStorage,
-		generateTitleFromFirstMessage,
 	};
 }
