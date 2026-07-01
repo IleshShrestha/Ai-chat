@@ -16,6 +16,7 @@ A full-stack AI chat application built with Next.js, Supabase, and OpenAI. Spark
 ### Accounts & data
 
 - **Google sign-in** via Supabase Auth — no passwords to manage.
+- **Guest mode** — try Spark instantly with an anonymous account (Supabase anonymous auth), gated by a Cloudflare Turnstile CAPTCHA. Guests can later **link a Google account** to keep their history, and are warned before signing out that guest chats are lost.
 - **Persistent history** stored in Supabase Postgres and available on any device.
 - **Row-Level Security** — every row is scoped to its owner in the database, so a user can only ever read their own chats.
 - **Lazy chat creation** — a new chat isn't saved until you send your first message, keeping the history clean.
@@ -42,6 +43,7 @@ A full-stack AI chat application built with Next.js, Supabase, and OpenAI. Spark
 - An [OpenAI API key](https://platform.openai.com/api-keys)
 - A [Supabase](https://supabase.com/) project
 - A Google OAuth client ([Google Cloud Console](https://console.cloud.google.com/))
+- A [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) widget (free) — only needed if you enable guest mode
 
 ### 1. Install
 
@@ -60,7 +62,12 @@ OPENAI_API_KEY=your_openai_api_key
 
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Only needed for guest mode (see step 5). Cloudflare's always-pass dev key: 1x00000000000000000000AA
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key
 ```
+
+> `NEXT_PUBLIC_*` variables are read at **build time**. After changing any of them, restart the dev server (or redeploy) — they won't hot-reload.
 
 ### 3. Set up the database
 
@@ -73,15 +80,36 @@ In the Supabase dashboard → **SQL Editor**, run the contents of [`supabase/sch
    https://YOUR-PROJECT.supabase.co/auth/v1/callback
    ```
 2. In Supabase → **Authentication → Providers → Google**, paste the Client ID and Secret and enable the provider.
-3. In Supabase → **Authentication → URL Configuration**, add `http://localhost:3000/**` (and your production URL) to the redirect allow-list.
+3. In Supabase → **Authentication → URL Configuration**:
+   - Set the **Site URL** to your app's URL (`http://localhost:3000` locally) — this is where users land after signing in.
+   - Add `http://localhost:3000/**` (and your production URL) to the **Redirect URLs** allow-list.
 
-### 5. Run
+### 5. Enable guest mode _(optional)_
+
+Guest mode uses Supabase anonymous authentication with a Cloudflare Turnstile CAPTCHA. Skip this if you only want Google sign-in — but note the **Continue as Guest** button will error without it.
+
+1. In Supabase → **Authentication → Sign In / Providers**, enable **Allow anonymous sign-ins**.
+2. In Supabase → **Authentication → Attack Protection**, enable **CAPTCHA protection**, choose **Turnstile**, and paste your Turnstile **secret key**. Put the matching **site key** in `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. (For local testing, use Cloudflare's test pair: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`.)
+3. To let guests upgrade to a real account, enable **Allow manual linking** in Supabase → **Authentication → settings**.
+
+> Anonymous users are real `auth.users` rows. They accumulate over time and can't sign back in once they log out, so consider a scheduled job to delete old anonymous users.
+
+### 6. Run
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you'll be sent to `/login` to sign in with Google.
+Open [http://localhost:3000](http://localhost:3000) — you'll be sent to `/login` to sign in with Google or continue as a guest.
+
+## Deployment
+
+Deploying to a host like [Vercel](https://vercel.com/):
+
+1. Add every variable from your `.env.local` to the host's **Environment Variables** (Production + Preview). They aren't read from `.env.local`, which is gitignored.
+2. Add your production URL to the Supabase **Redirect URLs** allow-list, and set it as the Supabase **Site URL** so post-login redirects work.
+3. The Google OAuth **redirect URI stays the Supabase one** (`https://YOUR-PROJECT.supabase.co/auth/v1/callback`) — you do **not** add the production domain there.
+4. Redeploy after changing env vars — `NEXT_PUBLIC_*` values are baked in at build time.
 
 ## Project Structure
 

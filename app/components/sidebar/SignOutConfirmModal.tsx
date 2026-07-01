@@ -56,7 +56,7 @@ export default function SignOutConfirmModal({
 								<p className="text-gray-600">
 									You&apos;re signed in as a guest. Signing out will make you{' '}
 									<span className="font-medium">
-										loseyour chat history
+										lose your chat history
 									</span>
 									— guest chats cannot be recovered. Link a Google account first
 									if you want to keep them.
