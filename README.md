@@ -2,6 +2,8 @@
 
 A full-stack AI chat application built with Next.js, Supabase, and OpenAI. Spark pairs a streaming chat interface with Google sign-in and a Postgres backend, so conversations are private, persistent, and available across devices.
 
+**🔗 [Live Demo](https://ai-spark-ivory.vercel.app/)**
+
 ## Features
 
 ### Chat
